@@ -93,7 +93,7 @@ The API will be available at `http://127.0.0.1:5000`.
   ```json
   {
     "text": "Text for sentiment analysis",
-    "model": "model_name"  // optional, default is 'default_model'
+    "model": "model_name"  // optional, default is 'phi3'
   }
   ```
 - **Response:**
