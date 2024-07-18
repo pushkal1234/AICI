@@ -26,8 +26,7 @@ project/
 - **controllers/sentiment_controller.py:** Contains the `SentimentController` class for sentiment analysis.
 - **controllers/__init__.py:** Initializes the controllers package.
 - **utils.py:** Utility functions including `load_config` and `class_factory`.
-- **app.py:** Flask application setup and endpoint definitions.
-- **main.py:** Main script for generating responses using the controllers.
+- **main.py:** Flask application setup and endpoint definitions.
 
 ## Setup
 
