@@ -1,0 +1,3 @@
+Flask==3.0.3
+langchain_community==0.2.7
+langid==1.1.6
