@@ -1,4 +1,3 @@
-# AiGenML
 
 # Translation and Sentiment Analysis API
 
@@ -41,16 +40,16 @@ project/
 
 1. Clone the repository:
 
-   \```sh
+   ```sh
    git clone https://github.com/your-username/your-repo.git
    cd your-repo
-   \```
+   ```
 
 2. Install required packages:
 
-   \```sh
+   ```sh
    pip install -r requirements.txt
-   \```
+   ```
 
 3. Ensure the `config.json` file is correctly set up in the project root.
 
@@ -58,9 +57,9 @@ project/
 
 Run the Flask application using the following command:
 
-\```sh
+```sh
 python app.py
-\```
+```
 
 The API will be available at `http://127.0.0.1:5000`.
 
@@ -72,18 +71,18 @@ The API will be available at `http://127.0.0.1:5000`.
 - **Method:** `POST`
 - **Description:** Translates the given text to German.
 - **Request Body:**
-  \```json
+  ```json
   {
     "text": "Text to be translated",
     "model": "model_name"  // optional, default is 'default_model'
   }
-  \```
+  ```
 - **Response:**
-  \```json
+  ```json
   {
     "translated_text": "Translated text"
   }
-  \```
+  ```
 
 ### 2. Analyze Sentiment
 
@@ -91,32 +90,32 @@ The API will be available at `http://127.0.0.1:5000`.
 - **Method:** `POST`
 - **Description:** Analyzes the sentiment of the given text.
 - **Request Body:**
-  \```json
+  ```json
   {
     "text": "Text for sentiment analysis",
     "model": "model_name"  // optional, default is 'default_model'
   }
-  \```
+  ```
 - **Response:**
-  \```json
+  ```json
   {
     "positive": count,
     "negative": count,
     "neutral": count
   }
-  \```
+  ```
 
 ## Example Usage
 
 ### Translation Example
-\```sh
+```sh
 curl -X POST http://127.0.0.1:5000/translate -H "Content-Type: application/json" -d '{"text": "I am good", "model": "phi3"}'
-\```
+```
 
 ### Sentiment Analysis Example
-\```sh
+```sh
 curl -X POST http://127.0.0.1:5000/sentiment -H "Content-Type: application/json" -d '{"text": "I am very happy. I am very sad", "model": "phi3"}'
-\```
+```
 
 ## License
 
