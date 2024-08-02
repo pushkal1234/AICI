@@ -3,6 +3,8 @@ import os
 
 from controllers.sentiment_controller import SentimentController
 from controllers.translation_controller import TranslationController
+from controllers.poem_controller import PoemController
+
 
 
 def load_config():
@@ -16,6 +18,8 @@ def class_factory(controller_name, model):
         return TranslationController(model)
     elif controller_name == "SentimentController":
         return SentimentController(model)
+    elif controller_name == "PoemController":
+        return PoemController((model))
     else:
         raise ValueError(f"Unknown controller name: {controller_name}")
 
