@@ -19,7 +19,7 @@ def translate_text():
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'TranslationController'
         translated_text = generate_response(text, model, controller_name)
-        return jsonify({'translated_text': translated_text})
+        return jsonify({'response': translated_text})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -32,7 +32,7 @@ def analyze_sentiment():
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'SentimentController'
         sentiment_result = generate_response(text, model, controller_name)
-        return jsonify(sentiment_result)
+        return jsonify({'response': sentiment_result})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -40,11 +40,12 @@ def analyze_sentiment():
 def generate_poem():
     try:
         data = request.get_json()
+        print(data)
         text = data['text']
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'PoemController'
         poem_result = generate_response(text, model, controller_name)
-        return jsonify(poem_result)
+        return jsonify({'response': poem_result})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
