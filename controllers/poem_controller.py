@@ -36,6 +36,15 @@ class PoemController:
             
         return line_boolean, word_boolean
             
+    def maintain_lines(self, output):       
+        lines = output.split('\n')
+        lines = [line for line in lines if line.strip()]
+
+        if len(lines) > 5:
+            return '\n'.join(lines[:5])
+        
+        else:
+            return output            
     
     def get_poem(self, input_text, input_text_split):
         try:
@@ -53,14 +62,27 @@ class PoemController:
         print(line_boolean, word_boolean)
         
         if line_boolean == False:
+            final_prompt = final_prompt + '. You did wrong. The total number of lines must be five'
+            
+            counter = 0
             while line_boolean is False:
-                final_prompt = final_prompt + '. The total number of lines must be five'
+                print("-------------")
+                print(final_prompt)
                 output = llm.invoke(final_prompt)
+                print(output)
                 line_boolean, word_boolean = self.check_output(output, input_text_split)
+                print(line_boolean, word_boolean)
+                                
+                if counter > 1:
+                    output = self.maintain_lines(output)
+                    line_boolean, word_boolean = self.check_output(output, input_text_split)
+                
+                counter = counter + 1
+
         
         if word_boolean == False:
+            final_prompt = final_prompt + '. Poem must contains defined words'
             while word_boolean is False:
-                final_prompt = final_prompt + '. Poem must contains defined words'
                 output = llm.invoke(final_prompt)
                 line_boolean, word_boolean = self.check_output(output, input_text_split)
                 
@@ -75,4 +97,6 @@ class PoemController:
         poem = self.get_poem(input_text, input_text_split)
         
         return poem
+
+
 

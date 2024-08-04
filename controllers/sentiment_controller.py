@@ -24,15 +24,38 @@ class SentimentController:
         initial_prompt = "sentiment of this sentence is"
         final_prompt = f"{initial_prompt} '{input_text}'"
 
+        print("final_prompt", final_prompt)
+
         output = llm.invoke(final_prompt, stop=['.'])
+        print("output:", output)
         output_sentiment = self.filter_sentiment(output, input_text)
+        
+        print("output_sentiment:", output_sentiment)
 
         if output_sentiment is None:
+            counter = 0 
             while output_sentiment is None:
                 output = llm.invoke(final_prompt + ' in positive, negative and neutral is', stop=['.'])
+                print(output)
                 output_sentiment = self.filter_sentiment(output, input_text)
-
-        return output_sentiment
+                counter = counter + 1
+                if counter > 5:
+                    break
+            
+            counter = 0
+            while output_sentiment is None:
+                output = llm.invoke(final_prompt)
+                print(output)
+                output_sentiment = self.filter_sentiment(output, input_text)
+                counter = counter + 1
+                if counter > 5:
+                    break
+        
+        if output_sentiment is None:
+            return "neutral"
+        
+        else:
+            return output_sentiment
 
     def input_preprocess(self, input_text):
         sentence_list = re.split(r'(?<=[.!?]) +', input_text)
@@ -40,6 +63,7 @@ class SentimentController:
 
     def generate_sentiment(self, input_text):
         sentence_list = self.input_preprocess(input_text)
+        print(sentence_list)
 
         sentiment_dict = {
             'positive': 0,
