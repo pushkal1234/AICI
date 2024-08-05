@@ -45,8 +45,7 @@ def analyze_sentiment():
 def generate_poem():
     try:
         data = request.get_json()
-        print(data)
-        text = data['text']
+        text = data['text']      
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'PoemController'
         poem_result = generate_response(text, model, controller_name)
