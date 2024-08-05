@@ -1,5 +1,7 @@
 from flask import Flask, request, jsonify
-
+import pandas as pd
+from datetime import datetime
+import threading
 from controllers.sentiment_controller import SentimentController
 from controllers.translation_controller import TranslationController
 from controllers.poem_controller import PoemController
@@ -9,6 +11,9 @@ app = Flask(__name__)
 
 # Load configuration
 CONFIG = load_config()
+
+logs_csv = pd.read_csv('logs/input_output.csv', index_col=0)
+lock = threading.Lock()
 
 
 @app.route('/translate', methods=['POST'])
@@ -53,25 +58,44 @@ def generate_response(text, model, controller_name):
     try:
         model = CONFIG[model]
         controller = class_factory(controller_name, model)
+        current_time = datetime.now()
 
         if isinstance(controller, TranslationController):
             translated_text = controller.generate_translation(text)
+            new_row = [current_time, text, translated_text]
+            
             return translated_text
 
         elif isinstance(controller, SentimentController):
             sentiment_result = controller.generate_sentiment(text)
+            new_row = [current_time, text, sentiment_result]
+
             return sentiment_result
         
         elif isinstance(controller, PoemController):
             poem_result = controller.generate_poem(text)
+            new_row = [current_time, text, poem_result]
+            
             return poem_result
             
         else:
             raise ValueError(f"Unsupported controller type: {controller_name}")
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"\033[91mAn error occurred: {e}\033[0m")  # Print in red
         return None
+    
+    finally:
+            # Use a lock to ensure thread safety
+            with lock:
+                try:
+                    logs_csv.loc[len(logs_csv)] = new_row
+                    logs_csv.to_csv('logs/input_output.csv')
+                    print(f"\033[92mLog saved successfully.\033[0m")  
+                    
+                except Exception as save_error:
+                    print(f"\033[91mFailed to save log: {save_error}\033[0m")  
+
 
 
 if __name__ == '__main__':
