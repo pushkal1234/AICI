@@ -1,11 +1,12 @@
 import re
-
+import tiktoken
 from langchain_community.llms import Ollama
 
 
 class SentimentController:
     def __init__(self, model):
         self.model = model
+        self.total_output_list = []
 
     def filter_sentiment(self, output, input_text):
         output_lower = output.lower()
@@ -36,6 +37,7 @@ class SentimentController:
             counter = 0 
             while output_sentiment is None:
                 output = llm.invoke(final_prompt + ' in positive, negative and neutral is', stop=['.'])
+                self.total_output_list.append(output)
                 print(output)
                 output_sentiment = self.filter_sentiment(output, input_text)
                 counter = counter + 1
@@ -75,7 +77,12 @@ class SentimentController:
             sentiment_type = self.get_sentiment(sentence)
             if sentiment_type:
                 sentiment_dict[sentiment_type] += 1
+        
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        query_token = len(encoding.encode(''.join(sentence_list)))
+        response_token = len(encoding.encode(''.join(sentiment_dict)))
+        total_token = query_token + response_token
 
-        return sentiment_dict
+        return sentiment_dict, total_token
 
 

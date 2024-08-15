@@ -23,8 +23,8 @@ def translate_text():
         text = data['text']
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'TranslationController'
-        translated_text = generate_response(text, model, controller_name)
-        return jsonify({'response': translated_text})
+        translated_text, total_token = generate_response(text, model, controller_name)
+        return jsonify({'response': translated_text, "total_token" : total_token})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -36,8 +36,8 @@ def analyze_sentiment():
         text = data['text']
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'SentimentController'
-        sentiment_result = generate_response(text, model, controller_name)
-        return jsonify({'response': sentiment_result})
+        sentiment_result, total_token = generate_response(text, model, controller_name)
+        return jsonify({'response': sentiment_result, "total_token" : total_token})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -48,8 +48,8 @@ def generate_poem():
         text = data['text']      
         model = data.get('model', 'phi3')  # Use a default model if not provided
         controller_name = 'PoemController'
-        poem_result = generate_response(text, model, controller_name)
-        return jsonify({'response': poem_result})
+        poem_result, total_token = generate_response(text, model, controller_name)
+        return jsonify({'response': poem_result, "total_token" : total_token})
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -60,22 +60,22 @@ def generate_response(text, model, controller_name):
         current_time = datetime.now()
 
         if isinstance(controller, TranslationController):
-            translated_text = controller.generate_translation(text)
+            translated_text, total_token = controller.generate_translation(text)
             new_row = [current_time, text, translated_text]
             
-            return translated_text
+            return translated_text, total_token
 
         elif isinstance(controller, SentimentController):
-            sentiment_result = controller.generate_sentiment(text)
+            sentiment_result, total_token = controller.generate_sentiment(text)
             new_row = [current_time, text, sentiment_result]
 
-            return sentiment_result
+            return sentiment_result, total_token
         
         elif isinstance(controller, PoemController):
-            poem_result = controller.generate_poem(text)
+            poem_result, total_token = controller.generate_poem(text)
             new_row = [current_time, text, poem_result]
             
-            return poem_result
+            return poem_result, total_token
             
         else:
             raise ValueError(f"Unsupported controller type: {controller_name}")
