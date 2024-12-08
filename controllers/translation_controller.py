@@ -4,6 +4,8 @@ import langid
 from langchain_community.llms import Ollama
 import nltk
 from nltk.corpus import words
+import tiktoken
+
 
 
 class TranslationController:
@@ -11,6 +13,7 @@ class TranslationController:
         self.model = model
         nltk.download('words')
         self.english_words = set(words.words())
+        self.total_output_list = []
 
     def remove_extra(self, text):
         chars_to_remove = ['"', "'", ':']
@@ -73,6 +76,7 @@ class TranslationController:
         print("After multiline check", output_translation)
         output_translation = self.check_english_content(output_translation)
         
+        self.total_output_list.append(output_translation)
         return output_translation
 
     def input_preprocess(self, input_text):
@@ -81,6 +85,7 @@ class TranslationController:
         return [sentence.strip() for sentence in sentences if sentence]
 
     def generate_translation(self, input_text):
+        token_length = 0
         sentence_list = self.input_preprocess(input_text)
         print(sentence_list)
 
@@ -92,8 +97,19 @@ class TranslationController:
             german_translation_list.append(german_translation)
             if not german_translation.endswith(('.', '!', '?', '...', '"', "'", ')', ';', ':')):
                 german_translation_list.append('.')
+        
+        
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        query_token = len(encoding.encode(''.join(sentence_list)))
+        response_token = len(encoding.encode(''.join(german_translation_list)))
+        total_token = query_token + response_token
 
-        return ''.join(german_translation_list)
+        return ''.join(german_translation_list), total_token
     
 
-    
+
+
+
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               

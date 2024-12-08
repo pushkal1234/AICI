@@ -1,11 +1,12 @@
 import re
-
+import tiktoken
 from langchain_community.llms import Ollama
 
 
 class PoemController:
     def __init__(self, model):
         self.model = model
+        self.total_output_list = []
     
     def check_output(self, output, input_text_split):
         line_boolean = None
@@ -64,7 +65,8 @@ class PoemController:
         
         return output
     
-    def get_poem(self, input_text, input_text_split):            
+    def get_poem(self, input_text, input_text_split):  
+          
         initial_prompt = "generate me a five line poem with words : "
         final_prompt = f"{initial_prompt} '{input_text}'"
         
@@ -103,7 +105,9 @@ class PoemController:
             while word_boolean is False:
                 output = self.generate_output_from_llm(final_prompt)
                 line_boolean, word_boolean = self.check_output(output, input_text_split)
-                
+        
+        self.total_output_list.append(output)
+        
         return output
                 
     def input_preprocess(self, input_text):
@@ -114,7 +118,13 @@ class PoemController:
         input_text_split = self.input_preprocess(input_text)
         poem = self.get_poem(input_text, input_text_split)
         
-        return poem
-
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        query_token = len(encoding.encode(''.join(input_text_split)))
+        response_token = len(encoding.encode(''.join(self.total_output_list)))
+        total_token = query_token + response_token
+        
+        
+        return poem, total_token
+    
 
 
