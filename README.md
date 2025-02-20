@@ -30,10 +30,16 @@ project/
 
 ## Setup
 
+- Install Ollama locally to run models like phi3, llama3.2
+for installtion MAC Users use link: https://ollama.com/download/mac
+
 ### Prerequisites
 
 - Python 3.x
 - pip (Python package installer)
+- pip install langid
+- pip install langchain-community
+- pip install langchain-core
 
 ### Installation
 
