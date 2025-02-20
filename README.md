@@ -31,7 +31,7 @@ project/
 ## Setup
 
 - Install Ollama locally to run models like phi3, llama3.2
-for installtion MAC Users use link: https://ollama.com/download/mac
+for installtion MAC users use link: https://ollama.com/download/mac
 
 ### Prerequisites
 
