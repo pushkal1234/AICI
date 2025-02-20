@@ -16,7 +16,6 @@ project/
 │   ├── translation_controller.py
 │   └── sentiment_controller.py
 ├── utils.py
-├── app.py
 └── main.py
 ```
 
@@ -63,7 +62,7 @@ for installtion MAC users use link: https://ollama.com/download/mac
 Run the Flask application using the following command:
 
 ```sh
-python app.py
+python main.py
 ```
 
 The API will be available at `http://127.0.0.1:5000`.
