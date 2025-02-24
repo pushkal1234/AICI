@@ -109,11 +109,11 @@ The API will be available at `http://127.0.0.1:5000`.
   }
   ```
 
-### 3. Generate complex Json using schema
+### 3. Generate complex JSON using schema
 
 - **URL:** `/process-json`
 - **Method:** `POST`
-- **Description:** Generates comples json based on schema provided.
+- **Description:** Generates complex JSON based on schema provided.
 - **Request Body:**
   ```json
   {
@@ -212,7 +212,7 @@ curl -X POST http://127.0.0.1:5000/translate -H "Content-Type: application/json"
 curl -X POST http://127.0.0.1:5000/sentiment -H "Content-Type: application/json" -d '{"text": "I am very happy. I am very sad", "model": "phi3"}'
 ```
 
-### Complex Json Generation Example
+### Complex JSON Generation Example
 ```sh
 curl --location --request POST 'http://127.0.0.1:5000/process-json' \
 --header 'Content-Type: application/json' \
