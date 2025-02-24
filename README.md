@@ -109,6 +109,97 @@ The API will be available at `http://127.0.0.1:5000`.
   }
   ```
 
+### 3. Generate complex Json using schema
+
+- **URL:** `/process-json`
+- **Method:** `POST`
+- **Description:** Generates comples json based on schema provided.
+- **Request Body:**
+  ```json
+  {
+          "date": "2025-02-22",
+          "text": "On 22nd February 2025, the financial summary for multiple users was generated. Rahul Sharma earns ₹12,00,000 annually, spends ₹6,00,000, and has invested ₹3,00,000 in mutual funds and ₹1,50,000 in stocks. He also has a credit card debt of ₹2,00,000. Priya Verma has an annual salary of ₹18,50,000 with expenses of ₹9,75,000. She has invested ₹2,50,000 in real estate and ₹1,00,000 in gold, and has a home loan of ₹5,00,000. Anil Mehta earns ₹9,50,000 per year and spends ₹4,00,000. He has a personal loan debt of ₹1,00,000 and a car loan of ₹3,50,000, along with savings of ₹1,75,000 in fixed deposits. Sunita Kapoor has a yearly salary of ₹22,00,000 and spends ₹10,00,000. She has invested ₹5,00,000 in government bonds, has business loan debt of ₹3,00,000, and has ₹3,00,000 in liquid savings. Vikram Singh earns ₹15,00,000, spends ₹8,00,000, and has invested ₹4,50,000 in ETFs. He has an education loan of ₹2,00,000 and a business loan of ₹4,50,000.",
+          "schema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "properties": {
+                  "date": { "type": "string", "format": "date" },
+                  "users": {
+                      "type": "array",
+                      "items": {
+                          "type": "object",
+                          "properties": {
+                              "name": { "type": "string" },
+                              "salary": { "type": "integer", "minimum": 0 },
+                              "expenses": { "type": "integer", "minimum": 0 },
+                              "investments": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "debts": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "loans": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "savings": { "type": "integer", "minimum": 0 }
+                          },
+                          "required": ["name", "salary", "expenses"]
+                      }
+                  }
+              },
+              "required": ["date", "users"]
+          },
+          "model": "llama2"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+        "result": {
+        "date": "2025-02-22",
+        "users": [
+            {
+                "debts": {},
+                "expenses": 600000,
+                "investments": {
+                    "mutual funds and ₹1": 300000
+                },
+                "loans": {},
+                "name": "Rahul Sharma",
+                "salary": 1200000,
+                "savings": 0
+            },
+            {
+                "debts": {},
+                "expenses": 400000,
+                "investments": {},
+                "loans": {},
+                "name": "Anil Mehta",
+                "salary": 950000,
+                "savings": 0
+            },
+            {
+                "debts": {},
+                "expenses": 800000,
+                "investments": {
+                    "etfs": 450000
+                },
+                "loans": {},
+                "name": "Vikram Singh",
+                "salary": 1500000,
+                "savings": 0
+            }
+        ]
+    },
+    "status": "success",
+    "timestamp": "2025-02-25T00:35:50.320605",
+    "tokens_used": 208
+  }
+  ```
+
 ## Example Usage
 
 ### Translation Example
@@ -119,6 +210,50 @@ curl -X POST http://127.0.0.1:5000/translate -H "Content-Type: application/json"
 ### Sentiment Analysis Example
 ```sh
 curl -X POST http://127.0.0.1:5000/sentiment -H "Content-Type: application/json" -d '{"text": "I am very happy. I am very sad", "model": "phi3"}'
+```
+
+### Complex Json Generation Example
+```sh
+curl --location --request POST 'http://127.0.0.1:5000/process-json' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+          "date": "2025-02-22",
+          "text": "On 22nd February 2025, the financial summary for multiple users was generated. Rahul Sharma earns ₹12,00,000 annually, spends ₹6,00,000, and has invested ₹3,00,000 in mutual funds and ₹1,50,000 in stocks. He also has a credit card debt of ₹2,00,000. Priya Verma has an annual salary of ₹18,50,000 with expenses of ₹9,75,000. She has invested ₹2,50,000 in real estate and ₹1,00,000 in gold, and has a home loan of ₹5,00,000. Anil Mehta earns ₹9,50,000 per year and spends ₹4,00,000. He has a personal loan debt of ₹1,00,000 and a car loan of ₹3,50,000, along with savings of ₹1,75,000 in fixed deposits. Sunita Kapoor has a yearly salary of ₹22,00,000 and spends ₹10,00,000. She has invested ₹5,00,000 in government bonds, has business loan debt of ₹3,00,000, and has ₹3,00,000 in liquid savings. Vikram Singh earns ₹15,00,000, spends ₹8,00,000, and has invested ₹4,50,000 in ETFs. He has an education loan of ₹2,00,000 and a business loan of ₹4,50,000.",
+          "schema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "properties": {
+                  "date": { "type": "string", "format": "date" },
+                  "users": {
+                      "type": "array",
+                      "items": {
+                          "type": "object",
+                          "properties": {
+                              "name": { "type": "string" },
+                              "salary": { "type": "integer", "minimum": 0 },
+                              "expenses": { "type": "integer", "minimum": 0 },
+                              "investments": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "debts": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "loans": {
+                                  "type": "object",
+                                  "additionalProperties": { "type": "integer", "minimum": 0 }
+                              },
+                              "savings": { "type": "integer", "minimum": 0 }
+                          },
+                          "required": ["name", "salary", "expenses"]
+                      }
+                  }
+              },
+              "required": ["date", "users"]
+          },
+          "model": "llama2"  
+        }'
 ```
 
 ## License
