@@ -5,6 +5,7 @@ import threading
 from controllers.sentiment_controller import SentimentController
 from controllers.translation_controller import TranslationController
 from controllers.poem_controller import PoemController
+from controllers.json_controller import JSONController
 from utils import load_config, class_factory
 
 app = Flask(__name__)
@@ -53,6 +54,55 @@ def generate_poem():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+@app.route('/process-json', methods=['POST'])
+def process_json():
+    try:
+        data = request.get_json()
+        
+        # Validate required fields in request
+        required_fields = ['text', 'date', 'schema']
+        missing_fields = [field for field in required_fields if field not in data]
+        
+        if missing_fields:
+            return jsonify({
+                'error': f'Missing required fields: {", ".join(missing_fields)}',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+
+        model_name = data.get('model', 'phi3')
+        
+        json_output, total_tokens = generate_response(
+            data,  # Passing the entire data object including schema
+            model_name,
+            "JSONController"
+        )
+
+        if json_output:
+            if "error" in json_output:
+                return jsonify(json_output), json_output.get("code", 500)
+                
+            response = {
+                'result': json_output,
+                'tokens_used': total_tokens,
+                'status': 'success',
+                'timestamp': datetime.now().isoformat()
+            }
+            return jsonify(response), 200
+        else:
+            return jsonify({
+                'error': 'Failed to process data',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 def generate_response(text, model, controller_name):
     try:
         model = CONFIG[model]
@@ -62,38 +112,40 @@ def generate_response(text, model, controller_name):
         if isinstance(controller, TranslationController):
             translated_text, total_token = controller.generate_translation(text)
             new_row = [current_time, text, translated_text]
-            
             return translated_text, total_token
-
+        
         elif isinstance(controller, SentimentController):
             sentiment_result, total_token = controller.generate_sentiment(text)
             new_row = [current_time, text, sentiment_result]
-
             return sentiment_result, total_token
         
         elif isinstance(controller, PoemController):
             poem_result, total_token = controller.generate_poem(text)
             new_row = [current_time, text, poem_result]
-            
             return poem_result, total_token
             
+        elif isinstance(controller, JSONController):
+            json_output, total_token = controller.process_financial_data(text)
+            new_row = [current_time, str(text), str(json_output)]
+            return json_output, total_token
+
         else:
             raise ValueError(f"Unsupported controller type: {controller_name}")
 
     except Exception as e:
         print(f"\033[91mAn error occurred: {e}\033[0m")  # Print in red
-        return None
+        return None, 0  # Return tuple with None and 0 tokens
     
     finally:
-            # Use a lock to ensure thread safety
-            with lock:
-                try:
-                    logs_csv.loc[len(logs_csv)] = new_row
-                    logs_csv.to_csv('logs/input_output.csv')
-                    print(f"\033[92mLog saved successfully.\033[0m")  
-                    
-                except Exception as save_error:
-                    print(f"\033[91mFailed to save log: {save_error}\033[0m")  
+        # Use a lock to ensure thread safety
+        with lock:
+            try:
+                logs_csv.loc[len(logs_csv)] = new_row
+                logs_csv.to_csv('logs/input_output.csv')
+                print(f"\033[92mLog saved successfully.\033[0m")  
+                
+            except Exception as save_error:
+                print(f"\033[91mFailed to save log: {save_error}\033[0m")
 
 
 
