@@ -212,6 +212,18 @@ The API will be available at `http://127.0.0.1:5000`.
 curl -X POST http://127.0.0.1:5000/translate -H "Content-Type: application/json" -d '{"text": "I am good", "model": "phi3"}'
 ```
 
+### Spanish Translation Example
+
+```sh
+curl --location --request POST 'http://127.0.0.1:5000/translate' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "text": "Quantum machine learning uses quantum arithms on quantum computers to speed up machine learning",
+    "target_language": "spanish",
+    "model": "phi3"
+}'
+```
+
 ### Sentiment Analysis Example
 ```sh
 curl -X POST http://127.0.0.1:5000/sentiment -H "Content-Type: application/json" -d '{"text": "I am very happy. I am very sad", "model": "phi3"}'
