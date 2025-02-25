@@ -1,4 +1,3 @@
-
 # Translation and Sentiment Analysis API
 
 This project provides a Flask-based API for performing text translation and sentiment analysis using custom controllers. The API supports two main functionalities:
@@ -204,6 +203,68 @@ The API will be available at `http://127.0.0.1:5000`.
     "tokens_used": 208
   }
   ```
+
+### 4. Generate SQL Queries
+
+- **URL:** `/generate-sql`
+- **Method:** `POST`
+- **Description:** Generates SQL queries based on natural language description
+- **Request Body:**
+  ```json
+  {
+    "text": "Natural language description of the query",
+    "operation": "select|insert|update|delete|create|alter",  // optional, defaults to "select"
+    "table_info": "Description of table structure",  // optional
+    "model": "model_name"  // optional, default is 'phi3'
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "result": {
+      "query": "Generated SQL query;",
+      "operation": "select|insert|update|delete|create|alter",
+      "status": "success"
+    },
+    "tokens_used": number,
+    "status": "success",
+    "timestamp": "ISO datetime"
+  }
+  ```
+
+### SQL Query Generation Example
+```sh
+curl -X POST http://127.0.0.1:5000/generate-sql \
+-H "Content-Type: application/json" \
+-d '{
+    "text": "Find all users who have made purchases over $1000",
+    "operation": "select",
+    "table_info": "users(id, name, email), orders(id, user_id, amount, date)",
+    "model": "phi3"
+}'
+```
+
+Example Response:
+```json
+{
+    "result": {
+        "query": "SELECT u.name, u.email, o.amount, o.date FROM users u JOIN orders o ON u.id = o.user_id WHERE o.amount > 1000;",
+        "operation": "select",
+        "status": "success"
+    },
+    "tokens_used": 42,
+    "status": "success",
+    "timestamp": "2024-02-25T12:34:56.789Z"
+}
+```
+
+Supported SQL Operations:
+- **SELECT**: Retrieve data from tables
+- **INSERT**: Add new records
+- **UPDATE**: Modify existing records
+- **DELETE**: Remove records
+- **CREATE**: Create new tables
+- **ALTER**: Modify table structure
 
 ## Example Usage
 

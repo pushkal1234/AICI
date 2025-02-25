@@ -6,6 +6,7 @@ from controllers.sentiment_controller import SentimentController
 from controllers.translation_controller import TranslationController
 from controllers.poem_controller import PoemController
 from controllers.json_controller import JSONController
+from controllers.sql_controller import SQLController
 from utils import load_config, class_factory
 
 app = Flask(__name__)
@@ -135,6 +136,39 @@ def process_json():
             'timestamp': datetime.now().isoformat()
         }), 500
 
+@app.route('/generate-sql', methods=['POST'])
+def generate_sql():
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({
+                'error': 'Missing required fields',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+
+        model = data.get('model', 'phi3')
+        controller_name = 'SQLController'
+        
+        sql_output, total_tokens = generate_response(data, model, controller_name)
+        
+        if isinstance(sql_output, dict) and sql_output.get('status') == 'success':
+            return jsonify({
+                'result': sql_output,
+                'tokens_used': total_tokens,
+                'status': 'success',
+                'timestamp': datetime.now().isoformat()
+            }), 200
+        else:
+            return jsonify(sql_output), sql_output.get('code', 500)
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
 def generate_response(text, model, controller_name):
     try:
         model = CONFIG[model]
@@ -160,6 +194,11 @@ def generate_response(text, model, controller_name):
             json_output, total_token = controller.process_financial_data(text)
             new_row = [current_time, str(text), str(json_output)]
             return json_output, total_token
+
+        elif isinstance(controller, SQLController):
+            sql_output, total_token = controller.generate_sql_query(text)
+            new_row = [current_time, str(text), str(sql_output)]
+            return sql_output, total_token
 
         else:
             raise ValueError(f"Unsupported controller type: {controller_name}")
