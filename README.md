@@ -73,18 +73,23 @@ The API will be available at `http://127.0.0.1:5000`.
 
 - **URL:** `/translate`
 - **Method:** `POST`
-- **Description:** Translates the given text to German.
+- **Description:** Translates the given text to German or Spanish
 - **Request Body:**
   ```json
   {
     "text": "Text to be translated",
+    "target_language": "german|spanish", // optional, defaults to "german"
     "model": "model_name"  // optional, default is 'phi3'
   }
   ```
 - **Response:**
   ```json
   {
-    "translated_text": "Translated text"
+    "translation": "Translated text",
+    "target_language": "german|spanish",
+    "tokens_used": number,
+    "status": "success",
+    "timestamp": "ISO datetime"
   }
   ```
 

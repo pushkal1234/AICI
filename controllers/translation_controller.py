@@ -1,12 +1,8 @@
 import re
-
-import langid
-from langchain_community.llms import Ollama
 import nltk
 from nltk.corpus import words
 import tiktoken
-
-
+from langchain.llms import Ollama
 
 class TranslationController:
     def __init__(self, model):
@@ -14,6 +10,16 @@ class TranslationController:
         nltk.download('words')
         self.english_words = set(words.words())
         self.total_output_list = []
+        self.supported_languages = {
+            "german": {
+                "prompt": "Translate this English text to German: ",
+                "validation_prompt": "Is this German translation correct for the English text: "
+            },
+            "spanish": {
+                "prompt": "Translate this English text to Spanish: ",
+                "validation_prompt": "Is this Spanish translation correct for the English text: "
+            }
+        }
 
     def remove_extra(self, text):
         chars_to_remove = ['"', "'", ':']
@@ -55,56 +61,76 @@ class TranslationController:
         german_filtered_words = [word for word in words if word.lower() not in self.english_words]
         return ' '.join(german_filtered_words)
 
-
-    def get_translation_from_LLM(self, input_text):
-        import utils
-        
-        prompt = utils.load_prompt()
-        final_prompt = f"Translate '{input_text}' to german. " + prompt["translate_prompt"]
-
-        print(final_prompt)
-        llm = Ollama(model=self.model, temperature=0)
-        output_translation = llm.invoke(final_prompt, stop=['.'])
-        if output_translation is None:
-            output_translation = self.repeat_translation(output_translation, llm, final_prompt)
-              
-        print("first", output_translation)
-        output_translation = self.check_multiline_and_german(output_translation)
-        if output_translation is None:
-            output_translation = self.repeat_translation(output_translation, llm, final_prompt)
-        
-        print("After multiline check", output_translation)
-        output_translation = self.check_english_content(output_translation)
-        
-        self.total_output_list.append(output_translation)
-        return output_translation
-
     def input_preprocess(self, input_text):
-        sentence_endings = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s')
-        sentences = sentence_endings.split(input_text)
-        return [sentence.strip() for sentence in sentences if sentence]
+        sentence_list = re.split(r'(?<=[.!?]) +', input_text)
+        return sentence_list
 
-    def generate_translation(self, input_text):
-        token_length = 0
-        sentence_list = self.input_preprocess(input_text)
-        print(sentence_list)
+    def get_translation_from_LLM(self, sentence: str, target_language: str = "german"):
+        """
+        Get translation from LLM for a given sentence
+        Args:
+            sentence: Text to translate
+            target_language: Language to translate to (german or spanish)
+        """
+        if target_language.lower() not in self.supported_languages:
+            raise ValueError(f"Unsupported language: {target_language}. Supported languages: {list(self.supported_languages.keys())}")
 
-        german_translation_list = []
-        for index in range(len(sentence_list)):
-            print("-----------")
-            german_translation = self.get_translation_from_LLM(sentence_list[index])
-            print(german_translation)
-            german_translation_list.append(german_translation)
-            if not german_translation.endswith(('.', '!', '?', '...', '"', "'", ')', ';', ':')):
-                german_translation_list.append('.')
+        language_config = self.supported_languages[target_language.lower()]
+        prompt = f"{language_config['prompt']}{sentence}"
         
+        llm = Ollama(model=self.model, temperature=0)
+        translation = llm.invoke(prompt)
         
-        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-        query_token = len(encoding.encode(''.join(sentence_list)))
-        response_token = len(encoding.encode(''.join(german_translation_list)))
-        total_token = query_token + response_token
+        # Validate translation
+        validation_prompt = f"{language_config['validation_prompt']}\nEnglish: {sentence}\nTranslation: {translation}"
+        validation = llm.invoke(validation_prompt)
+        
+        if "no" in validation.lower():
+            # Retry translation once if validation fails
+            translation = llm.invoke(prompt)
+        
+        self.total_output_list.append(translation)
+        return translation
 
-        return ''.join(german_translation_list), total_token
+    def generate_translation(self, input_data: dict) -> tuple:
+        """
+        Generate translation based on input text and target language
+        Args:
+            input_data: Dictionary containing 'text' and 'target_language'
+        Returns:
+            tuple: (translated_text, total_tokens)
+        """
+        try:
+            input_text = input_data['text']
+            target_language = input_data.get('target_language', 'german').lower()  # Default to German if not specified
+            
+            if target_language not in self.supported_languages:
+                raise ValueError(f"Unsupported language: {target_language}. Supported languages: {list(self.supported_languages.keys())}")
+
+            sentence_list = self.input_preprocess(input_text)
+            print(f"Translating to {target_language}...")
+            print(sentence_list)
+
+            translation_list = []
+            for index in range(len(sentence_list)):
+                print("-----------")
+                translation = self.get_translation_from_LLM(sentence_list[index], target_language)
+                print(translation)
+                translation_list.append(translation)
+                if not translation.endswith(('.', '!', '?', '...', '"', "'", ')', ';', ':')):
+                    translation_list.append('.')
+            
+            # Calculate tokens
+            encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+            query_token = len(encoding.encode(''.join(sentence_list)))
+            response_token = len(encoding.encode(''.join(translation_list)))
+            total_token = query_token + response_token
+
+            return ''.join(translation_list), total_token
+
+        except Exception as e:
+            print(f"\033[91mTranslation error: {str(e)}\033[0m")
+            return str(e), 0
     
 
 

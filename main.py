@@ -18,16 +18,48 @@ lock = threading.Lock()
 
 
 @app.route('/translate', methods=['POST'])
-def translate_text():
+def translate():
     try:
         data = request.get_json()
-        text = data['text']
-        model = data.get('model', 'phi3')  # Use a default model if not provided
+        if not data or 'text' not in data:
+            return jsonify({
+                'error': 'Missing text field',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+
+        # Create input data dictionary
+        input_data = {
+            'text': data['text'],
+            'target_language': data.get('target_language', 'german')  # Default to German
+        }
+        
+        model = data.get('model', 'phi3')  # Default to phi3 if not specified
         controller_name = 'TranslationController'
-        translated_text, total_token = generate_response(text, model, controller_name)
-        return jsonify({'response': translated_text, "total_token" : total_token})
+        
+        translated_text, total_token = generate_response(input_data, model, controller_name)
+        
+        if isinstance(translated_text, str) and not translated_text.startswith('Error'):
+            return jsonify({
+                'translation': translated_text,
+                'target_language': input_data['target_language'],
+                'tokens_used': total_token,
+                'status': 'success',
+                'timestamp': datetime.now().isoformat()
+            }), 200
+        else:
+            return jsonify({
+                'error': translated_text,
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 500
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
 
 
 @app.route('/sentiment', methods=['POST'])
