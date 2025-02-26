@@ -8,6 +8,7 @@ from controllers.poem_controller import PoemController
 from controllers.json_controller import JSONController
 from controllers.sql_controller import SQLController
 from utils import load_config, class_factory
+from controllers.benchmark_controller import BenchmarkController
 
 app = Flask(__name__)
 
@@ -161,6 +162,46 @@ def generate_sql():
             }), 200
         else:
             return jsonify(sql_output), sql_output.get('code', 500)
+
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/benchmark', methods=['POST'])
+def run_benchmark():
+    try:
+        data = request.get_json()
+        if not data or 'test_cases' not in data:
+            return jsonify({
+                'error': 'Missing test cases',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+
+        benchmark = BenchmarkController()
+        model = data.get('model', 'phi3')
+        
+        # Create controllers for each test case
+        for test in data['test_cases']:
+            if test['type'] == 'translation':
+                test['controller'] = TranslationController(CONFIG[model])
+            elif test['type'] == 'sql':
+                test['controller'] = SQLController(CONFIG[model])
+            elif test['type'] == 'json':
+                test['controller'] = JSONController(CONFIG[model])
+            elif test['type'] == 'sentiment':
+                test['controller'] = SentimentController(CONFIG[model])
+
+        results = benchmark.run_benchmark(data['test_cases'], model)
+        
+        return jsonify({
+            'results': results,
+            'status': 'success',
+            'timestamp': datetime.now().isoformat()
+        }), 200
 
     except Exception as e:
         return jsonify({
