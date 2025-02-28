@@ -12,12 +12,10 @@ class TranslationController:
         self.total_output_list = []
         self.supported_languages = {
             "german": {
-                "prompt": "Translate this English text to German: ",
-                "validation_prompt": "Is this German translation correct for the English text: "
+                "prompt": "Translate this English text to German: The response should only contain translated sentence"
             },
             "spanish": {
-                "prompt": "Translate this English text to Spanish: ",
-                "validation_prompt": "Is this Spanish translation correct for the English text: "
+                "prompt": "Translate this English text to Spanish: The response should only contain translated sentence"
             }
         }
 
@@ -31,7 +29,6 @@ class TranslationController:
         """
         Checks english content at line level
         """
-        
         output_multiline_length = len(output_translation.split('\n'))
         if output_multiline_length > 1:
             multiline_split = output_translation.split('\n')
@@ -43,12 +40,6 @@ class TranslationController:
         else:
             output_translation = self.remove_extra(output_translation)
             return output_translation
-    
-    def repeat_translation(self, output_translation, llm, final_prompt):
-        while output_translation is None:
-            output_translation = llm.invoke(final_prompt, stop=['.'])
-        
-        return output_translation
     
     def check_english_content(self, output_translation):
         """
@@ -69,7 +60,7 @@ class TranslationController:
         """
         Get translation from LLM for a given sentence
         Args:
-            sentence: Text to translate
+            sentence: Translate this sentence to {target_language}. The response should only contain translated sentence
             target_language: Language to translate to (german or spanish)
         """
         if target_language.lower() not in self.supported_languages:
@@ -80,14 +71,6 @@ class TranslationController:
         
         llm = Ollama(model=self.model, temperature=0)
         translation = llm.invoke(prompt)
-        
-        # Validate translation
-        validation_prompt = f"{language_config['validation_prompt']}\nEnglish: {sentence}\nTranslation: {translation}"
-        validation = llm.invoke(validation_prompt)
-        
-        if "no" in validation.lower():
-            # Retry translation once if validation fails
-            translation = llm.invoke(prompt)
         
         self.total_output_list.append(translation)
         return translation
@@ -120,7 +103,6 @@ class TranslationController:
                 if not translation.endswith(('.', '!', '?', '...', '"', "'", ')', ';', ':')):
                     translation_list.append('.')
             
-            # Calculate tokens
             encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
             query_token = len(encoding.encode(''.join(sentence_list)))
             response_token = len(encoding.encode(''.join(translation_list)))
