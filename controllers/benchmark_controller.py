@@ -22,7 +22,7 @@ class BenchmarkController:
                 "translation": "Translate this to German: ",
                 "sql": "Generate SQL query for: ",
                 "json": "Convert this text to JSON: ",
-                "sentiment": "Analyze the sentiment (positive, negative, or neutral) of this text: "
+                "sentiment": "List sentiment of each sentence in the given text in JSON format only: {positive:count, negative:count, neutral:count}" 
             }
             
             response = llm.invoke(f"{prompts[task_type]}{text}")
