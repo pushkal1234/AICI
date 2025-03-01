@@ -12,10 +12,10 @@ class TranslationController:
         self.total_output_list = []
         self.supported_languages = {
             "german": {
-                "prompt": "Translate this English text to German: The response should only contain translated sentence and don't alter input text"
+                "prompt": "Translate the following English text to German. Return ONLY the translated text without any explanations, notes, or the original text: "
             },
             "spanish": {
-                "prompt": "Translate this English text to Spanish: The response should only contain translated sentence and don't alter input text"
+                "prompt": "Translate the following English text to Spanish. Return ONLY the translated text without any explanations, notes, or the original text: "
             }
         }
 
@@ -24,6 +24,42 @@ class TranslationController:
         for char in chars_to_remove:
             text = text.replace(char, '')
         return text
+    
+    def clean_translation_output(self, translation: str, target_language: str) -> str:
+        """
+        Clean the translation output by removing any explanations, original text,
+        or instructions that might have been included by the LLM.
+        """
+        # Remove markdown formatting if present
+        translation = re.sub(r'^```.*?\n', '', translation)
+        translation = re.sub(r'\n```$', '', translation)
+        
+        # Remove phrases that indicate explanations or instructions
+        explanation_patterns = [
+            r'(?i)La respuesta debe.*?contener',
+            r'(?i)The response should.*?contain',
+            r'(?i)Texto original en inglés.*?',
+            r'(?i)Original English text.*?',
+            r'(?i)Translation:',
+            r'(?i)Traducción:',
+            r'(?i)Übersetzung:',
+            r'(?i)y no se deben modificar los datos del entrada',
+            r'(?i)and don\'t alter input text',
+            r'\"[^\"]*?\"',  # Remove quoted text which often contains original text
+        ]
+        
+        for pattern in explanation_patterns:
+            translation = re.sub(pattern, '', translation)
+        
+        # Remove any lines that are too short (likely not part of the translation)
+        lines = translation.split('\n')
+        filtered_lines = [line for line in lines if len(line.strip()) > 5]
+        translation = ' '.join(filtered_lines)
+        
+        # Remove extra spaces
+        translation = re.sub(r'\s+', ' ', translation).strip()
+        
+        return translation
 
     def check_multiline_and_german(self, output_translation):
         """
@@ -60,7 +96,7 @@ class TranslationController:
         """
         Get translation from LLM for a given sentence
         Args:
-            sentence: Translate this sentence to {target_language}. The response should only contain translated sentence
+            sentence: Sentence to translate
             target_language: Language to translate to (german or spanish)
         """
         if target_language.lower() not in self.supported_languages:
@@ -71,6 +107,9 @@ class TranslationController:
         
         llm = Ollama(model=self.model, temperature=0)
         translation = llm.invoke(prompt)
+        
+        # Clean the translation output
+        translation = self.clean_translation_output(translation, target_language)
         
         self.total_output_list.append(translation)
         return translation
