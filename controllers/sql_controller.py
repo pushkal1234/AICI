@@ -37,6 +37,7 @@ class SQLController:
         sql_query = re.sub(r'^```sql\n', '', sql_query)
         sql_query = re.sub(r'^```\n', '', sql_query)
         sql_query = re.sub(r'\n```$', '', sql_query)
+        sql_query = re.sub(r'\n', ' ', sql_query)
         
         # Remove any leading/trailing whitespace
         sql_query = sql_query.strip()
