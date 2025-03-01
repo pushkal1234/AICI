@@ -12,10 +12,10 @@ class TranslationController:
         self.total_output_list = []
         self.supported_languages = {
             "german": {
-                "prompt": "Translate this English text to German: The response should only contain translated sentence"
+                "prompt": "Translate this English text to German: The response should only contain translated sentence and don't alter input text"
             },
             "spanish": {
-                "prompt": "Translate this English text to Spanish: The response should only contain translated sentence"
+                "prompt": "Translate this English text to Spanish: The response should only contain translated sentence and don't alter input text"
             }
         }
 

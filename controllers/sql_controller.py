@@ -2,6 +2,7 @@ import re
 import tiktoken
 from langchain_community.llms import Ollama
 from typing import Dict, Tuple, Any
+from datetime import datetime  # Add this import for the error handler
 
 class SQLController:
     def __init__(self, model):
@@ -26,6 +27,21 @@ class SQLController:
             'WHERE' in query.upper() if any(op in query.upper() for op in ['UPDATE', 'DELETE']) else True
         ]
         return all(basic_checks)
+    
+    def clean_sql_output(self, sql_query: str) -> str:
+        """
+        Clean the SQL query output by removing markdown code block formatting
+        and any other unnecessary formatting.
+        """
+        # Remove markdown code block formatting
+        sql_query = re.sub(r'^```sql\n', '', sql_query)
+        sql_query = re.sub(r'^```\n', '', sql_query)
+        sql_query = re.sub(r'\n```$', '', sql_query)
+        
+        # Remove any leading/trailing whitespace
+        sql_query = sql_query.strip()
+        
+        return sql_query
 
     def generate_sql_query(self, input_data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         try:
@@ -60,6 +76,9 @@ class SQLController:
                 retry_prompt = f"{prompt}\nPrevious attempt was invalid. Please ensure proper SQL syntax."
                 sql_query = llm.invoke(retry_prompt).strip()
 
+            # Clean the SQL query output
+            sql_query = self.clean_sql_output(sql_query)
+            
             self.total_output_list.append(sql_query)
 
             # Calculate tokens

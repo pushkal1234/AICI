@@ -20,7 +20,7 @@ class BenchmarkController:
             # Basic prompt based on task
             prompts = {
                 "translation": "Translate this to German: ",
-                "sql": "Generate SQL query for: ",
+                "sql": "Generate SQL query for the {text} and the response should only contain sql query",
                 "json": "Convert this text to JSON: ",
                 "sentiment": "List sentiment of each sentence in the given text in JSON format only: {positive:count, negative:count, neutral:count}" 
             }
