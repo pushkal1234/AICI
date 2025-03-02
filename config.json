@@ -1,1 +1,8 @@
-{  "mistral": "mistral",  "llama2": "llama2-uncensored",  "phi3": "phi3"}
+{
+  "mistral": "mistral",
+  "llama2": "llama2-uncensored",
+  "llama3.2": "llama3.2",
+  "phi3": "phi3",
+  "deepseek-r1": "deepseek-r1",
+  "bloom": "hf.co/tensorblock/bloom-7b1-GGUF:Q2_K"
+}
