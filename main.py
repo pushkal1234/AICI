@@ -171,44 +171,38 @@ def generate_sql():
         }), 500
 
 @app.route('/benchmark', methods=['POST'])
-def run_benchmark():
-    try:
-        data = request.get_json()
-        if not data or 'test_cases' not in data:
-            return jsonify({
-                'error': 'Missing test cases',
-                'status': 'error',
-                'timestamp': datetime.now().isoformat()
-            }), 400
-
-        benchmark = BenchmarkController()
-        model = data.get('model', 'phi3')
-        
-        # Create controllers for each test case
-        for test in data['test_cases']:
-            if test['type'] == 'translation':
-                test['controller'] = TranslationController(CONFIG[model])
-            elif test['type'] == 'sql':
-                test['controller'] = SQLController(CONFIG[model])
-            elif test['type'] == 'json':
-                test['controller'] = JSONController(CONFIG[model])
-            elif test['type'] == 'sentiment':
-                test['controller'] = SentimentController(CONFIG[model])
-
-        results = benchmark.run_benchmark(data['test_cases'], model)
-        
-        return jsonify({
-            'results': results,
-            'status': 'success',
-            'timestamp': datetime.now().isoformat()
-        }), 200
-
-    except Exception as e:
-        return jsonify({
-            'error': str(e),
-            'status': 'error',
-            'timestamp': datetime.now().isoformat()
-        }), 500
+def benchmark():
+    data = request.json
+    
+    # Create controllers for each task type
+    translation_controller = TranslationController(data.get('model', 'phi3'))
+    sql_controller = SQLController(data.get('model', 'phi3'))
+    json_controller = JSONController(data.get('model', 'phi3'))
+    sentiment_controller = SentimentController(data.get('model', 'phi3'))
+    
+    # Prepare test cases with controllers
+    test_cases = []
+    for test in data.get('test_cases', []):
+        test_case = test.copy()
+        if test['type'] == 'translation':
+            test_case['controller'] = translation_controller
+        elif test['type'] == 'sql':
+            test_case['controller'] = sql_controller
+        elif test['type'] == 'json':
+            test_case['controller'] = json_controller
+        elif test['type'] == 'sentiment':
+            test_case['controller'] = sentiment_controller
+        test_cases.append(test_case)
+    
+    benchmark_controller = BenchmarkController()
+    
+    results = benchmark_controller.run_comprehensive_benchmark(
+        test_cases=test_cases,
+        models=data.get('models', ['phi3']),
+        target_language=data.get('target_language', 'german')
+    )
+    
+    return jsonify(results)
 
 def generate_response(text, model, controller_name):
     try:
