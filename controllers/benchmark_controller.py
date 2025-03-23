@@ -745,25 +745,30 @@ class BenchmarkController:
         models = list(benchmark_results["models"].keys())
         approaches = self.approaches
         
-        # 1. Bar chart of models and processing time
-        self._generate_processing_time_chart(benchmark_results, models, approaches, output_dir, timestamp)
+        # Get all task types from the benchmark results
+        task_types = set()
+        for model in models:
+            for result in benchmark_results["models"][model]["results"]:
+                task_types.add(result["task_type"])
         
-        # 2. Bar chart of models and tokens utilization
-        self._generate_token_utilization_chart(benchmark_results, models, approaches, output_dir, timestamp)
+        # 1. Generate task-specific processing time charts
+        for task_type in task_types:
+            self._generate_task_processing_time_chart(benchmark_results, models, approaches, task_type, output_dir, timestamp)
         
-        # 3. Input length vs quality, tokens, and processing time
-        self._generate_input_length_charts(benchmark_results, models, approaches, output_dir, timestamp)
+        # 2. Generate task-specific token utilization charts
+        for task_type in task_types:
+            self._generate_task_token_utilization_chart(benchmark_results, models, approaches, task_type, output_dir, timestamp)
+        
+        # 3. Generate combined task comparison charts
+        self._generate_combined_task_comparison_chart(benchmark_results, models, approaches, task_types, output_dir, timestamp)
         
         # 4. Generate comparison tables for all tasks
         self._generate_comparison_tables(benchmark_results, models, approaches, output_dir, timestamp)
         
         print(f"Visualizations saved to {output_dir}")
-        self._generate_comparison_tables(benchmark_results, models, approaches, output_dir, timestamp)
-        
-        print(f"Visualizations saved to {output_dir}")
 
-    def _generate_processing_time_chart(self, benchmark_results, models, approaches, output_dir, timestamp):
-        """Generate bar chart of models and processing time"""
+    def _generate_task_processing_time_chart(self, benchmark_results, models, approaches, task_type, output_dir, timestamp):
+        """Generate bar chart of models and processing time for a specific task"""
         plt.figure(figsize=(12, 8))
         
         # Prepare data
@@ -771,7 +776,11 @@ class BenchmarkController:
         for model in models:
             model_data = []
             for approach in approaches:
-                model_data.append(benchmark_results["models"][model]["metrics"]["approaches"][approach]["time"])
+                # Get task-specific metrics if available
+                if task_type in benchmark_results["models"][model]["metrics"]["task_specific"]:
+                    model_data.append(benchmark_results["models"][model]["metrics"]["task_specific"][task_type][approach]["time"])
+                else:
+                    model_data.append(0)  # Default if no data for this task
             data.append(model_data)
         
         # Set up bar chart
@@ -786,18 +795,18 @@ class BenchmarkController:
         # Add labels and legend
         plt.xlabel('Models')
         plt.ylabel('Processing Time (seconds)')
-        plt.title('Processing Time by Model and Approach')
+        plt.title(f'Processing Time by Model and Approach for {task_type.title()} Task')
         plt.xticks(x, models)
         plt.legend()
         plt.grid(axis='y', linestyle='--', alpha=0.7)
         
         # Save figure
         plt.tight_layout()
-        plt.savefig(output_dir / f"processing_time_{timestamp}.png", dpi=300)
+        plt.savefig(output_dir / f"{task_type}_processing_time_{timestamp}.png", dpi=300)
         plt.close()
 
-    def _generate_token_utilization_chart(self, benchmark_results, models, approaches, output_dir, timestamp):
-        """Generate bar chart of models and token utilization"""
+    def _generate_task_token_utilization_chart(self, benchmark_results, models, approaches, task_type, output_dir, timestamp):
+        """Generate bar chart of models and token utilization for a specific task"""
         plt.figure(figsize=(12, 8))
         
         # Prepare data
@@ -805,7 +814,11 @@ class BenchmarkController:
         for model in models:
             model_data = []
             for approach in approaches:
-                model_data.append(benchmark_results["models"][model]["metrics"]["approaches"][approach]["tokens"])
+                # Get task-specific metrics if available
+                if task_type in benchmark_results["models"][model]["metrics"]["task_specific"]:
+                    model_data.append(benchmark_results["models"][model]["metrics"]["task_specific"][task_type][approach]["tokens"])
+                else:
+                    model_data.append(0)  # Default if no data for this task
             data.append(model_data)
         
         # Set up bar chart
@@ -820,113 +833,86 @@ class BenchmarkController:
         # Add labels and legend
         plt.xlabel('Models')
         plt.ylabel('Tokens Utilized')
-        plt.title('Token Utilization by Model and Approach')
+        plt.title(f'Token Utilization by Model and Approach for {task_type.title()} Task')
         plt.xticks(x, models)
         plt.legend()
         plt.grid(axis='y', linestyle='--', alpha=0.7)
         
         # Save figure
         plt.tight_layout()
-        plt.savefig(output_dir / f"token_utilization_{timestamp}.png", dpi=300)
+        plt.savefig(output_dir / f"{task_type}_token_utilization_{timestamp}.png", dpi=300)
         plt.close()
 
-    def _generate_input_length_charts(self, benchmark_results, models, approaches, output_dir, timestamp):
-        """Generate charts for input length impact"""
-        # Collect data by input length
-        input_length_data = {}
+    def _generate_combined_task_comparison_chart(self, benchmark_results, models, approaches, task_types, output_dir, timestamp):
+        """Generate charts comparing all tasks for each approach"""
         
-        for model in models:
-            model_results = benchmark_results["models"][model]["results"]
-            for result in model_results:
-                input_length = result["input_length"]
-                if input_length not in input_length_data:
-                    input_length_data[input_length] = {
-                        "time": {approach: [] for approach in approaches},
-                        "tokens": {approach: [] for approach in approaches}
-                    }
-                
-                for approach in approaches:
-                    input_length_data[input_length]["time"][approach].append(
-                        result["approaches"][approach]["time_taken"]
-                    )
-                    input_length_data[input_length]["tokens"][approach].append(
-                        result["approaches"][approach]["tokens"]["total"]
-                    )
-        
-        # Calculate averages
-        input_lengths = sorted(input_length_data.keys())
-        avg_time = {approach: [] for approach in approaches}
-        avg_tokens = {approach: [] for approach in approaches}
-        
-        for length in input_lengths:
-            for approach in approaches:
-                if input_length_data[length]["time"][approach]:
-                    avg_time[approach].append(
-                        sum(input_length_data[length]["time"][approach]) / 
-                        len(input_length_data[length]["time"][approach])
-                else:
-                    avg_time[approach].append(0)
-                
-                if input_length_data[length]["tokens"][approach]:
-                    avg_tokens[approach].append(
-                        sum(input_length_data[length]["tokens"][approach]) / 
-                        len(input_length_data[length]["tokens"][approach])
-                else:
-                    avg_tokens[approach].append(0)
-        
-        # Generate charts
-        # 1. Input length vs processing time
-        plt.figure(figsize=(12, 8))
+        # For each approach, create a chart comparing tasks
         for approach in approaches:
-            plt.plot(input_lengths, avg_time[approach], marker='o', label=approach.replace('_', ' ').title())
-        
-        plt.xlabel('Input Length (words)')
+            plt.figure(figsize=(14, 10))
+            
+            # Prepare data for processing time
+            task_data = {task: [] for task in task_types}
+            
+            for model in models:
+                for task in task_types:
+                    if task in benchmark_results["models"][model]["metrics"]["task_specific"]:
+                        task_data[task].append(benchmark_results["models"][model]["metrics"]["task_specific"][task][approach]["time"])
+                else:
+                        task_data[task].append(0)  # Default if no data
+            
+            # Set up bar chart
+            x = np.arange(len(models))
+            width = 0.8 / len(task_types)
+            
+            # Plot bars for each task
+            for i, task in enumerate(task_types):
+                offset = (i - len(task_types)/2 + 0.5) * width
+                plt.bar(x + offset, task_data[task], width, label=task.title())
+            
+            # Add labels and legend
+            plt.xlabel('Models')
         plt.ylabel('Processing Time (seconds)')
-        plt.title('Input Length vs Processing Time')
+        plt.title(f'Task Comparison for {approach.replace("_", " ").title()} Approach')
+        plt.xticks(x, models)
         plt.legend()
-        plt.grid(linestyle='--', alpha=0.7)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+            
+            # Save figure
         plt.tight_layout()
-        plt.savefig(output_dir / f"input_length_vs_time_{timestamp}.png", dpi=300)
+        plt.savefig(output_dir / f"task_comparison_{approach}_{timestamp}.png", dpi=300)
         plt.close()
         
-        # 2. Input length vs token utilization
-        plt.figure(figsize=(12, 8))
-        for approach in approaches:
-            plt.plot(input_lengths, avg_tokens[approach], marker='o', label=approach.replace('_', ' ').title())
-        
-        plt.xlabel('Input Length (words)')
+            # Also create a token utilization comparison
+        plt.figure(figsize=(14, 10))
+            
+            # Prepare data for token utilization
+        token_data = {task: [] for task in task_types}
+            
+        for model in models:
+            for task in task_types:
+                if task in benchmark_results["models"][model]["metrics"]["task_specific"]:
+                    token_data[task].append(benchmark_results["models"][model]["metrics"]["task_specific"][task][approach]["tokens"])
+                else:
+                    token_data[task].append(0)  # Default if no data
+            
+            # Plot bars for each task
+            for i, task in enumerate(task_types):
+                offset = (i - len(task_types)/2 + 0.5) * width
+                plt.bar(x + offset, token_data[task], width, label=task.title())
+            
+            # Add labels and legend
+        plt.xlabel('Models')
         plt.ylabel('Tokens Utilized')
-        plt.title('Input Length vs Token Utilization')
+        plt.title(f'Token Utilization by Task for {approach.replace("_", " ").title()} Approach')
+        plt.xticks(x, models)
         plt.legend()
-        plt.grid(linestyle='--', alpha=0.7)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+            
+            # Save figure
         plt.tight_layout()
-        plt.savefig(output_dir / f"input_length_vs_tokens_{timestamp}.png", dpi=300)
+        plt.savefig(output_dir / f"task_token_comparison_{approach}_{timestamp}.png", dpi=300)
         plt.close()
         
-        # 3. Input length vs quality (placeholder - would need human evaluation)
-        # For now, we'll create a placeholder chart showing a theoretical quality curve
-        plt.figure(figsize=(12, 8))
-        
-        # Theoretical quality curves (for illustration)
-        quality_controlled = [min(0.9, 0.5 + 0.4 * (1 - np.exp(-0.05 * length))) for length in input_lengths]
-        quality_raw = [min(0.7, 0.3 + 0.4 * (1 - np.exp(-0.03 * length))) for length in input_lengths]
-        quality_few_shot = [min(0.85, 0.45 + 0.4 * (1 - np.exp(-0.04 * length))) for length in input_lengths]
-        quality_fine_tuned = [min(0.95, 0.6 + 0.35 * (1 - np.exp(-0.06 * length))) for length in input_lengths]
-        
-        plt.plot(input_lengths, quality_controlled, marker='o', label='Controlled')
-        plt.plot(input_lengths, quality_raw, marker='o', label='Raw')
-        plt.plot(input_lengths, quality_few_shot, marker='o', label='Few Shot')
-        plt.plot(input_lengths, quality_fine_tuned, marker='o', label='Fine Tuned')
-        
-        plt.xlabel('Input Length (words)')
-        plt.ylabel('Theoretical Quality Score (0-1)')
-        plt.title('Input Length vs Theoretical Quality (Placeholder)')
-        plt.legend()
-        plt.grid(linestyle='--', alpha=0.7)
-        plt.tight_layout()
-        plt.savefig(output_dir / f"input_length_vs_quality_{timestamp}.png", dpi=300)
-        plt.close()
-
     def _generate_comparison_tables(self, benchmark_results, models, approaches, output_dir, timestamp):
         """
         Generate comparison tables for all tasks showing metrics for different approaches
