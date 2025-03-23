@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import pandas as pd
 from datetime import datetime
 import threading
@@ -9,6 +9,8 @@ from controllers.json_controller import JSONController
 from controllers.sql_controller import SQLController
 from utils import load_config, class_factory
 from controllers.benchmark_controller import BenchmarkController
+from controllers.SQL_benchmark_controller import SQLBenchmarkController
+import os
 
 app = Flask(__name__)
 
@@ -18,6 +20,8 @@ CONFIG = load_config()
 logs_csv = pd.read_csv('logs/input_output.csv', index_col=0)
 lock = threading.Lock()
 
+# Create a global dictionary to store benchmark jobs
+benchmark_jobs = {}
 
 @app.route('/translate', methods=['POST'])
 def translate():
@@ -204,6 +208,273 @@ def benchmark():
     
     return jsonify(results)
 
+@app.route('/sql-benchmark', methods=['POST'])
+def sql_benchmark():
+    """Start a SQL benchmark job"""
+    try:
+        data = request.json
+        
+        # Extract parameters with defaults
+        models = data.get('models', ['phi3'])
+        num_samples = data.get('num_samples', 20)
+        job_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Initialize the SQL benchmark controller
+        controller = SQLBenchmarkController()
+        
+        # Start benchmark in a background thread to avoid blocking
+        def run_benchmark():
+            try:
+                results = controller.run_sql_benchmark(models=models, num_samples=num_samples)
+                benchmark_jobs[job_id]['status'] = 'completed'
+                benchmark_jobs[job_id]['results'] = results
+                benchmark_jobs[job_id]['timestamp'] = datetime.now().isoformat()
+            except Exception as e:
+                benchmark_jobs[job_id]['status'] = 'failed'
+                benchmark_jobs[job_id]['error'] = str(e)
+                print(f"Benchmark error: {str(e)}")
+        
+        # Store job details
+        benchmark_jobs[job_id] = {
+            'status': 'running',
+            'models': models,
+            'num_samples': num_samples,
+            'start_time': datetime.now().isoformat()
+        }
+        
+        # Start the benchmark thread
+        thread = threading.Thread(target=run_benchmark)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'job_id': job_id,
+            'status': 'running',
+            'message': f'Benchmark started for models: {models}',
+            'timestamp': datetime.now().isoformat()
+        }), 202
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/sql-benchmark/status/<job_id>', methods=['GET'])
+def sql_benchmark_status(job_id):
+    """Get the status of a benchmark job"""
+    if job_id not in benchmark_jobs:
+        return jsonify({
+            'error': 'Job not found',
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 404
+    
+    job = benchmark_jobs[job_id]
+    return jsonify(job), 200
+
+@app.route('/sql-benchmark/results/<job_id>', methods=['GET'])
+def sql_benchmark_results(job_id):
+    """Get the results of a completed benchmark job"""
+    if job_id not in benchmark_jobs:
+        return jsonify({
+            'error': 'Job not found',
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 404
+    
+    job = benchmark_jobs[job_id]
+    if job['status'] != 'completed':
+        return jsonify({
+            'error': 'Benchmark not yet completed',
+            'status': job['status'],
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    
+    # Return tabular results as JSON
+    try:
+        # Find the latest comparison table CSV file
+        log_dir = os.path.join('logs', 'sql_benchmark')
+        files = [f for f in os.listdir(log_dir) if f.startswith('comparison_table_')]
+        if not files:
+            return jsonify({
+                'error': 'No comparison table found',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+        
+        latest_file = max(files, key=lambda x: os.path.getmtime(os.path.join(log_dir, x)))
+        table_path = os.path.join(log_dir, latest_file)
+        
+        # Load and return the table as JSON
+        table_df = pd.read_csv(table_path)
+        return jsonify({
+            'table': table_df.to_dict(orient='records'),
+            'status': 'success',
+            'timestamp': datetime.now().isoformat()
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/sql-benchmark/visualizations/<job_id>/<viz_type>/<model>', methods=['GET'])
+def sql_benchmark_visualizations(job_id, viz_type, model):
+    """Get visualizations from a completed benchmark job"""
+    if job_id not in benchmark_jobs:
+        return jsonify({
+            'error': 'Job not found',
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 404
+    
+    job = benchmark_jobs[job_id]
+    if job['status'] != 'completed':
+        return jsonify({
+            'error': 'Benchmark not yet completed',
+            'status': job['status'],
+            'timestamp': datetime.now().isoformat()
+        }), 400
+    
+    # Return the requested visualization
+    try:
+        # Find the latest visualization file matching the request
+        viz_dir = os.path.join('logs', 'sql_benchmark', 'visualizations')
+        
+        # Map viz_type to filename pattern
+        viz_patterns = {
+            'accuracy': f'accuracy_by_complexity_{model}_',
+            'tokens': f'token_efficiency_{model}_',
+            'time': f'processing_time_{model}_',
+            'errors': f'error_analysis_{model}_',
+            'radar': f'radar_chart_{model}_'
+        }
+        
+        if viz_type not in viz_patterns:
+            return jsonify({
+                'error': f'Invalid visualization type: {viz_type}',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 400
+        
+        pattern = viz_patterns[viz_type]
+        files = [f for f in os.listdir(viz_dir) if f.startswith(pattern)]
+        
+        if not files:
+            return jsonify({
+                'error': f'No {viz_type} visualization found for model {model}',
+                'status': 'error',
+                'timestamp': datetime.now().isoformat()
+            }), 404
+        
+        latest_file = max(files, key=lambda x: os.path.getmtime(os.path.join(viz_dir, x)))
+        viz_path = os.path.join(viz_dir, latest_file)
+        
+        # Return the visualization file
+        return send_file(viz_path, mimetype='image/png')
+    
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/sql-benchmark/quick-run', methods=['POST'])
+def sql_benchmark_quick_run():
+    """Run a limited SQL benchmark for quick results"""
+    try:
+        data = request.json
+        
+        # Extract parameters with more limited defaults for faster execution
+        models = data.get('models', ['phi3'])
+        num_samples = data.get('num_samples', 5)  # Limited samples for speed
+        complexity = data.get('complexity', 'simple')  # Focus on simple queries for speed
+        
+        # Initialize the SQL benchmark controller
+        controller = SQLBenchmarkController()
+        
+        # Modify the benchmark to run only on specified complexity
+        controller.complexity_levels = [complexity]
+        
+        # Run benchmark directly (blocking call for quick results)
+        results = controller.run_sql_benchmark(models=models, num_samples=num_samples)
+        
+        # Find the latest comparison table CSV file
+        log_dir = os.path.join('logs', 'sql_benchmark')
+        files = [f for f in os.listdir(log_dir) if f.startswith('comparison_table_')]
+        latest_file = max(files, key=lambda x: os.path.getmtime(os.path.join(log_dir, x)))
+        table_path = os.path.join(log_dir, latest_file)
+        
+        # Load the table
+        table_df = pd.read_csv(table_path)
+        
+        return jsonify({
+            'table': table_df.to_dict(orient='records'),
+            'message': 'Quick benchmark completed',
+            'status': 'success',
+            'timestamp': datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error',
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+@app.route('/sql-benchmark/analysis/<job_id>/<analysis_type>', methods=['GET'])
+def get_benchmark_analysis(job_id, analysis_type):
+    """Get analysis reports for a completed benchmark job"""
+    if job_id not in benchmark_jobs:
+        return jsonify({
+            'error': 'Job not found',
+            'status': 'error'
+        }), 404
+    
+    job = benchmark_jobs[job_id]
+    if job['status'] != 'completed':
+        return jsonify({
+            'error': 'Benchmark not yet completed',
+            'status': job['status']
+        }), 400
+    
+    try:
+        # Initialize the controller
+        controller = SQLBenchmarkController()
+        
+        # Set results from the job
+        controller.results = job['results']
+        
+        # Generate the requested analysis
+        if analysis_type == 'task_type':
+            report = controller.analyze_by_task_type()
+        elif analysis_type == 'domain':
+            report = controller.analyze_by_domain()
+        elif analysis_type == 'complexity':
+            report = controller.analyze_by_original_complexity()
+        else:
+            return jsonify({
+                'error': f'Invalid analysis type: {analysis_type}',
+                'status': 'error'
+            }), 400
+        
+        # Return the report
+        return jsonify({
+            'report': report,
+            'status': 'success'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
 def generate_response(text, model, controller_name):
     try:
         model = CONFIG[model]
@@ -256,5 +527,5 @@ def generate_response(text, model, controller_name):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=50000)
 

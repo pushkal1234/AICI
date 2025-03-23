@@ -8,4 +8,6 @@ protobuf==5.29.1
 tiktoken==0.7.0
 tornado==6.4
 jsonschema==4.17.3
-
+evaluate>=0.4.0
+datasets>=2.14.0
+squall>=0.1.0
